@@ -3,7 +3,7 @@
 Reverse proxy so end-user IP addresses never reach Userpilot's servers directly. The
 Userpilot SDK normally connects straight to `js.userpilot.io` (script CDN) and
 `analytex.userpilot.io` (realtime events websocket, at `/v1/events/websocket`) — this
-account's real backend endpoint, confirmed via Userpilot support, is `analytex.userpilot.io`.
+account's real backend endpoint `analytex.userpilot.io`.
 
 ## What this does
 
