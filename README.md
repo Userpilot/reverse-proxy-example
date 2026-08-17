@@ -67,6 +67,14 @@ e.g. `"GET /sdk/latest.js HTTP/1.1" -> "https://js.userpilot.io/sdk/latest.js" s
 upstream_status=200`. This is the fastest way to confirm a path is being built correctly,
 since it's the literal string nginx used, not the location's `proxy_pass` line.
 
+The same log line also shows IP-stripping happening in real time: `client_sent[XFF="..."
+X-Real-IP="..." X-Client-IP="..."]` prints whatever IP-identifying headers the client actually
+sent, and `ip_stripping=...` confirms whether/how this location zeroes them out before
+forwarding (`n/a (not proxied)` for non-proxied locations like `/`). Trigger it with e.g.
+`curl -H "X-Forwarded-For: 1.2.3.4" http://localhost:8080/sdk/latest.js` and watch
+`docker compose logs -f proxy` — the spoofed IP shows up in `client_sent[...]` while
+`ip_stripping=stripped (...)` confirms it never reached the upstream request.
+
 ## Troubleshooting: duplicated path segments
 
 If a proxy mounted under a prefix that doesn't match the real upstream path (e.g.
