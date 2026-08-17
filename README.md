@@ -31,6 +31,45 @@ Open `http://localhost:8080/test.html`, fill in a real token in the script tag, 
 DevTools Network: the SDK script should load via `/sdk/latest.js`, the websocket should open
 to `/userpilot/websocket`, and neither should hit a `userpilot.io` domain directly.
 
+## Debugging
+
+`nginx.conf` logs a custom `proxied` format (`docker compose logs -f proxy`) that shows,
+for every request, the exact upstream URL nginx forwarded to plus the response status —
+e.g. `"GET /sdk/latest.js HTTP/1.1" -> "https://js.userpilot.io/sdk/latest.js" status=200
+upstream_status=200`. This is the fastest way to confirm a path is being built correctly,
+since it's the literal string nginx used, not the location's `proxy_pass` line.
+
+## Troubleshooting: duplicated path segments
+
+If a proxy mounted under a prefix that doesn't match the real upstream path (e.g.
+`/services/some-integration/proxy/`, unlike this repo's `/sdk/` which happens to mirror
+`js.userpilot.io`'s real `/sdk/` path) shows a resource's path repeated, e.g.:
+
+```
+/services/userpilot-integration/proxy/services/userpilot-integration/proxy/uploads/<hash>.png
+```
+
+the cause is `proxy_pass` with a variable host (required here for DNS re-resolution, see
+above) not stripping the matched `location` prefix — nginx only does that automatic
+stripping when the upstream host is hardcoded. With a variable host, `$request_uri` carries
+the *entire* original path, prefix included, straight to the upstream. If the upstream (or
+the SDK) then builds a link from that already-prefixed path and something requests it
+through the same proxy again, the prefix gets added a second time.
+
+The fix is to strip the location's own prefix explicitly with a regex capture instead of
+forwarding `$request_uri` verbatim:
+
+```nginx
+location ~ ^/services/some-integration/proxy/(.*)$ {
+    set $upstream real-upstream-host.com;
+    proxy_pass https://$upstream/$1$is_args$args;
+}
+```
+
+Confirmed locally: proxying a request through the "$request_uri, unstripped" pattern to an
+upstream whose real path doesn't include the local prefix 404s; switching to the regex-strip
+pattern above resolves correctly.
+
 ## Still open before production
 
 1. This is HTTP/`localhost` only. The real SDK likely requires HTTPS/WSS — put a TLS cert in
