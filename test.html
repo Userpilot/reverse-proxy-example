@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Userpilot Proxy Test</title>
+</head>
+<body>
+  <h1>Userpilot Proxy Test</h1>
+  <p>Open DevTools &rarr; Network. Confirm the SDK script loads from <code>/sdk/latest.js</code>
+     and the events websocket opens to <code>/userpilot/websocket</code> &mdash; neither request
+     should go to a <code>userpilot.io</code> domain directly.</p>
+
+  <script>
+    window.userpilotSettings = {
+      token: "NX-de1214af",
+      endpoint: "localhost:8080/userpilot",
+      proxy: "all"
+    };
+  </script>
+  <script src="/sdk/latest.js"></script>
+</body>
+</html>
