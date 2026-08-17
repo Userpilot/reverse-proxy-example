@@ -9,11 +9,15 @@
   <p>Open DevTools &rarr; Network. Confirm the SDK script loads from <code>/sdk/latest.js</code>
      and the events websocket opens to <code>/userpilot/websocket</code> &mdash; neither request
      should go to a <code>userpilot.io</code> domain directly.</p>
+  <p>The SDK opens the events socket as <code>wss://</code> against whatever host:port
+     <code>endpoint</code> below points to, regardless of this page's own protocol &mdash; so
+     <code>endpoint</code> must point at nginx's TLS port (<code>8443</code>, see README "Local
+     test with TLS"), but this page itself can still be loaded over plain HTTP.</p>
 
   <script>
     window.userpilotSettings = {
       token: "NX-de1214af",
-      endpoint: "localhost:8080/userpilot",
+      endpoint: "localhost:8443/userpilot",
       proxy: "all"
     };
   </script>

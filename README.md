@@ -28,8 +28,36 @@ docker compose up -d
 ```
 
 Open `http://localhost:8080/test.html`, fill in a real token in the script tag, and check
-DevTools Network: the SDK script should load via `/sdk/latest.js`, the websocket should open
-to `/userpilot/websocket`, and neither should hit a `userpilot.io` domain directly.
+DevTools Network: the SDK script should load via `/sdk/latest.js`. The websocket, however,
+will fail here — see "Local test with TLS" below.
+
+## Local test with TLS
+
+The SDK opens the events websocket as `wss://` against whatever host:port `endpoint` points
+to, regardless of the page's own protocol — plain `http://localhost:8080` can't serve that
+handshake itself (the TLS `ClientHello` hits a plain-HTTP listener and gets rejected), so
+`endpoint` needs to point at a TLS-terminated port. To test locally, generate a trusted local
+certificate with [mkcert](https://github.com/FiloSottile/mkcert):
+
+```
+brew install mkcert
+mkcert -install                 # adds a local CA to your system/browser trust store
+mkdir -p certs
+mkcert -cert-file certs/localhost.pem -key-file certs/localhost-key.pem localhost 127.0.0.1 ::1
+```
+
+`docker-compose.yml` mounts `./certs` into the container and exposes `8443:443`;
+`nginx.conf`'s `server` block listens on both `80` and `443 ssl` using those certs.
+`test.html`'s `endpoint` is set to `localhost:8443/userpilot` to match, so it works whether
+the page is opened via `http://localhost:8080/test.html` or `https://localhost:8443/test.html`
+— confirmed both ways: DevTools Network shows the SDK script loading via `/sdk/latest.js` and
+the websocket opening (`wss://`, `101 Switching Protocols`) to `/userpilot/websocket`, neither
+hitting a `userpilot.io` domain directly. (Browsers don't block an insecure page from opening
+a *secure* `wss://` connection elsewhere — only the reverse — so only `endpoint`'s target needs
+TLS, not the page itself.)
+
+`mkcert -install` can be undone later with `mkcert -uninstall`. `certs/` holds a private key —
+keep it out of version control (see `.gitignore`).
 
 ## Debugging
 
@@ -72,8 +100,8 @@ pattern above resolves correctly.
 
 ## Still open before production
 
-1. This is HTTP/`localhost` only. The real SDK likely requires HTTPS/WSS — put a TLS cert in
-   front of nginx (mkcert for local testing, a real cert for production).
+1. Locally this uses an mkcert-issued cert, trusted only on this machine (see "Local test with
+   TLS"). Production needs a real cert (e.g. Let's Encrypt) for the public domain below.
 2. This can't live on `localhost` in production — it needs to run on a real server with a
    public domain (e.g. `proxy.yourcompany.com`) reachable by all end users, not just one
    machine.
